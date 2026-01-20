@@ -2,55 +2,23 @@ import pygame
 import time
 import os
 import random
+import gamecursor
 from pygame.locals import *
 
 ZOMBIE_PATH = os.path.join("data", "zombie")
+FONT_PATH = os.path.join("data", "font")
 ZOMBIE_SPAWN_IMG = os.path.join(ZOMBIE_PATH, "zombie_spawn.png")
 ZOMBIE_IDLE_IMG = os.path.join(ZOMBIE_PATH, "zombie_idle.png")
 ZOMBIE_DEATH_IMG = os.path.join(ZOMBIE_PATH, "zombie_death.png")
 ZOMBIE_HIDE_IMG = os.path.join(ZOMBIE_PATH, "zombie_hide.png")
-HAMMER_IMG = os.path.join("data", "hammer.png")
 BACKGROUND_IMG = os.path.join("data", "background.png")
+VCR_OSD_MONO_FONT = os.path.join(FONT_PATH, "VCR_OSD_MONO.ttf")
 SPAWN_TIME = 1
 SPAWN_LOCATIONS = [(310, 120), (760, 120), (1210, 120),
                    (310, 390), (760, 390), (1210, 390),
                    (310, 660), (760, 660), (1210, 660)]
 COLLIDER_EVENT = pygame.event.custom_type()
-
-class Hammer:
-    def __init__(self):
-        self._position = position
-        self._sprite = pygame.image.load(HAMMER_IMG)
-
-        self._anim_frame = 0
-        self._default_anim_timer = 0.02083333
-        self._anim_timer = self._default_anim_timer
-        self._sprite_rect = pygame.Rect(0, 0, 64, 64)
-
-        self.should_be_destroyed = False
-
-    def _animate(self, frametime):
-        self._anim_timer = self._anim_timer - frametime
-        if self._anim_timer <= 0 and self._anim_frame < 7:
-            new_cords = self._anim_frame * 64
-            self._sprite_rect = pygame.Rect(new_cords, 0, 64, 64)
-            self._anim_timer = self._default_anim_timer
-            self._anim_frame = self._anim_frame + 1
-
-    def on_render(self, display_surf):
-        display_surf.blit(self._sprite, self._position, self._sprite_rect)
-
-    def on_loop(self, frametime):
-        if self._anim_frame >= 7:
-            self.should_be_destroyed = True
-
-            event = pygame.event.Event
-            event.type = COLLIDER_EVENT
-            event.__dict__["data1"] = self._position
-
-            pygame.event.post(event)
-        else:
-            self._anim_frame = self._anim_frame + 1
+DEFAULT_COLLIDER_OFFSET = (10, 10)
 
 class Zombie:
     def __init__(self, position):
@@ -71,12 +39,12 @@ class Zombie:
         self._anim_timer = self._default_anim_timer 
         self._sprite_rect = pygame.Rect(0, 0, 64, 64)
 
-        self._status = self.SPAWN
 
         self._is_bonkable = False
-        self._box_collider = (10, 10)
+        self._collider_offset = DEFAULT_COLLIDER_OFFSET
 
         self.should_be_destroyed = False
+        self.status = self.SPAWN
         self.position = position
 
     def _animate(self, frametime):
@@ -89,29 +57,45 @@ class Zombie:
 
     def on_loop(self, frametime):
         self._animate(frametime)
-        if (self._status == self.DEATH or self._status == self.HIDE) and self._anim_frame >= 7:
+        if (self.status == self.DEATH or self._status == self.HIDE) and self._anim_frame >= 7:
             self.should_be_destroyed = True
-        elif self._status == self.SPAWN and self._anim_frame >= 7:
-            self._status = self.IDLE
+        elif self.status == self.SPAWN and self._anim_frame >= 7:
+            self.status = self.IDLE
             self._is_bonkable = True
 
         self._alive_time = self._alive_time - frametime
         if self._alive_time <= 0:
-            self._status = self.HIDE
+            self.status = self.HIDE
 
     def on_render(self, display_surf):
-        if self._status == self.SPAWN:
+        if self.status == self.SPAWN:
             display_surf.blit(self.SPAWN_SPRITE, self.position, self._sprite_rect)
-        elif self._status == self.IDLE:
+        elif self.status == self.IDLE:
             display_surf.blit(self.IDLE_SPRITE, self.position, self._sprite_rect)
-        elif self._status == self.HIDE:
+        elif self.status == self.HIDE:
             display_surf.blit(self.HIDE_SPRITE, self.position, self._sprite_rect)
         else:
             display_surf.blit(self.DEATH_SPRITE, self.position, self._sprite_rect)
 
     def on_event(self, event):
-        if not self._status == self.IDLE:
+        if not self.status == self.IDLE:
             return
+
+        if event.type != pygame.MOUSEBUTTONDOWN:
+            return
+
+        if not self._is_bonkable:
+            return
+
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        min_width = self.position[0] - 32 - self._collider_offset[0]
+        max_width = self.position[0] + 32 + self._collider_offset[0]
+        min_height = self.position[1] - 32 - self._collider_offset[1]
+        max_height = self.position[1] + 32 + self._collider_offset[1]
+
+        if mouse_x >= min_width and mouse_x <= max_width and mouse_y >= min_width and mouse_y <= max_width:
+            self.status = self.DEATH
+            self._is_bonkable = True
  
 class App():
     def __init__(self):
@@ -123,9 +107,13 @@ class App():
         self._occupied_spawn_locations = []
 
         self._background_sprite = pygame.image.load(BACKGROUND_IMG)
+        self._font = pygame.font.Font(VCR_OSD_MONO_FONT, 12)
 
         self._spawn_timer = SPAWN_TIME
         self._frametime = 0
+
+        self._points = 0
+        self._misses = 0
         random.seed(time.time())
 
         self.size = self.weight, self.height = 1584, 887
@@ -153,6 +141,11 @@ class App():
                 self._occupied_spawn_locations.remove(location)
                 self._alive_zombies.remove(zombie)
 
+                if zombie.status == zombie.DEATH:
+                    self._points = self._points + 1
+                else:
+                    self._points = self._misses + 1
+
         self._spawn_timer = self._spawn_timer - self._frametime
         if self._spawn_timer <= 0 and len(self._free_spawn_locations) > 0:
             spawn_location = self.get_random_spawn_location()
@@ -166,6 +159,11 @@ class App():
         self._display_surf.blit(self._background_sprite, self._background_sprite.get_rect())
         for zombie in self._alive_zombies:
             zombie.on_render(self._display_surf)
+
+        points_surf = self._font.render("POINTS: " + str(self._points))
+        misses_surf = self._font.render("MISSES: " + str(self._misses))
+        hitrate_surf = = self._font.render("HIT RATE: ")
+
         pygame.display.flip()
 
     def on_event(self, event):
