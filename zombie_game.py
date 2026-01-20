@@ -39,7 +39,6 @@ class Zombie:
         self._anim_timer = self._default_anim_timer 
         self._sprite_rect = pygame.Rect(0, 0, 64, 64)
 
-
         self._is_bonkable = False
         self._collider_offset = DEFAULT_COLLIDER_OFFSET
 
@@ -57,7 +56,7 @@ class Zombie:
 
     def on_loop(self, frametime):
         self._animate(frametime)
-        if (self.status == self.DEATH or self._status == self.HIDE) and self._anim_frame >= 7:
+        if (self.status == self.DEATH or self.status == self.HIDE) and self._anim_frame >= 7:
             self.should_be_destroyed = True
         elif self.status == self.SPAWN and self._anim_frame >= 7:
             self.status = self.IDLE
@@ -88,35 +87,38 @@ class Zombie:
             return
 
         mouse_x, mouse_y = pygame.mouse.get_pos()
-        min_width = self.position[0] - 32 - self._collider_offset[0]
-        max_width = self.position[0] + 32 + self._collider_offset[0]
-        min_height = self.position[1] - 32 - self._collider_offset[1]
-        max_height = self.position[1] + 32 + self._collider_offset[1]
+        min_width = self.position[0]
+        max_width = self.position[0] + 64 + self._collider_offset[0]
+        min_height = self.position[1]
+        max_height = self.position[1] + 64 + self._collider_offset[1]
+        #print(mouse_x, mouse_y)
+        #print(min_width, max_width, min_height, max_height)
 
-        if mouse_x >= min_width and mouse_x <= max_width and mouse_y >= min_width and mouse_y <= max_width:
+        if mouse_x >= min_width and mouse_x <= max_width and mouse_y >= min_height and mouse_y <= max_height:
             self.status = self.DEATH
+            self._anim_frame = 0
             self._is_bonkable = True
  
 class App():
     def __init__(self):
         self._display_surf = None
         self._alive_zombies = []
-        self._hammer = Hammer()
 
         self._free_spawn_locations = SPAWN_LOCATIONS
         self._occupied_spawn_locations = []
 
         self._background_sprite = pygame.image.load(BACKGROUND_IMG)
-        self._font = pygame.font.Font(VCR_OSD_MONO_FONT, 12)
+        self._font = None
 
         self._spawn_timer = SPAWN_TIME
         self._frametime = 0
 
         self._points = 0
         self._misses = 0
-        random.seed(time.time())
+        self._hitrate = 0
 
         self.size = self.weight, self.height = 1584, 887
+        random.seed(time.time())
 
     def get_random_spawn_location(self):
         if(len(self._free_spawn_locations) == 0):
@@ -128,6 +130,8 @@ class App():
 
     def on_init(self):
         pygame.init()
+        pygame.font.init()
+        self._font = pygame.font.Font(VCR_OSD_MONO_FONT, 32)
         self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
         self._running = True
  
@@ -144,7 +148,13 @@ class App():
                 if zombie.status == zombie.DEATH:
                     self._points = self._points + 1
                 else:
-                    self._points = self._misses + 1
+                    self._misses = self._misses + 1
+
+                if(self._points + self._misses != 0):
+                    self._hitrate = self._points / (self._points + self._misses)
+                else:
+                    self._hitrate = 0
+
 
         self._spawn_timer = self._spawn_timer - self._frametime
         if self._spawn_timer <= 0 and len(self._free_spawn_locations) > 0:
@@ -160,9 +170,13 @@ class App():
         for zombie in self._alive_zombies:
             zombie.on_render(self._display_surf)
 
-        points_surf = self._font.render("POINTS: " + str(self._points))
-        misses_surf = self._font.render("MISSES: " + str(self._misses))
-        hitrate_surf = = self._font.render("HIT RATE: ")
+        points_surf = self._font.render("POINTS: " + str(self._points), False, (0, 0, 0))
+        misses_surf = self._font.render("MISSES: " + str(self._misses), False, (0, 0, 0))
+        hitrate_surf = self._font.render("HIT RATE: " + str(self._hitrate), False, (0, 0, 0))
+
+        self._display_surf.blit(points_surf, (10, 50))
+        self._display_surf.blit(misses_surf, (10, 75))
+        self._display_surf.blit(hitrate_surf, (10, 100))
 
         pygame.display.flip()
 
@@ -174,6 +188,7 @@ class App():
             zombie.on_event(event)
 
     def on_cleanup(self):
+        pygame.font.quit()
         pygame.quit()
  
     def on_execute(self):
@@ -181,7 +196,6 @@ class App():
             self._running = False
  
         while( self._running ):
-            #print(len(self._free_spawn_locations))
             start_time = time.time()
 
             for event in pygame.event.get():

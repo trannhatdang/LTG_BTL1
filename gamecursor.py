@@ -1,4 +1,5 @@
 import pygame
+import os
 
 HAMMER_IMG = os.path.join("data", "hammer.png")
 
