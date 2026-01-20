@@ -8,34 +8,43 @@ ZOMBIE_PATH = os.path.join('data', 'zombie')
 ZOMBIE_SPAWN_IMG = os.path.join(ZOMBIE_PATH, 'zombie_spawn.png')
 ZOMBIE_IDLE_IMG = os.path.join(ZOMBIE_PATH, 'zombie_idle.png')
 ZOMBIE_DEATH_IMG = os.path.join(ZOMBIE_PATH, 'zombie_death.png')
+ZOMBIE_HIDE_IMG = os.path.join(ZOMBIE_PATH, 'zombie_hide.png')
 BACKGROUND_IMG = os.path.join('data', 'background.png')
 SPAWN_TIME = 1
 SPAWN_LOCATIONS = [(310, 120), (760, 120), (1210, 120),
                    (310, 390), (760, 390), (1210, 390),
                    (310, 660), (760, 660), (1210, 660)]
 
+class Hammer:
+    def __init__(self, position):
+        pass
+
 class Zombie:
     def __init__(self, position):
         self.SPAWN = 0
         self.IDLE = 1
         self.DEATH = 2
+        self.HIDE = 3
 
         self.SPAWN_SPRITE = pygame.image.load(ZOMBIE_SPAWN_IMG)
         self.IDLE_SPRITE = pygame.image.load(ZOMBIE_IDLE_IMG)
         self.DEATH_SPRITE = pygame.image.load(ZOMBIE_DEATH_IMG)
+        self.HIDE_SPRITE = pygame.image.load(ZOMBIE_HIDE_IMG)
 
-        self._position = position
-        self._alive_time = 1
+        self._alive_time = 5
 
         self._anim_frame = 0
-        self._default_anim_timer = 0.0833
-        self._anim_timer = self._default_anim_timer #4 fps
+        self._default_anim_timer = 0.0833 #12 fps
+        self._anim_timer = self._default_anim_timer 
         self._sprite_rect = pygame.Rect(0, 0, 64, 64)
 
         self._status = self.SPAWN
 
+        self._is_bonkable = False
+        self._box_collider = (10, 10)
+
         self.should_be_destroyed = False
-        self.box_collider = (10, 10)
+        self.position = position
 
     def _animate(self, frametime):
         self._anim_timer = self._anim_timer - frametime
@@ -47,23 +56,28 @@ class Zombie:
 
     def on_loop(self, frametime):
         self._animate(frametime)
-        if self._status == self.DEATH and self._anim_frame >= 7:
+        if (self._status == self.DEATH or self._status == self.HIDE) and self._anim_frame >= 7:
             self.should_be_destroyed = True
         elif self._status == self.SPAWN and self._anim_frame >= 7:
             self._status = self.IDLE
 
         self._alive_time = self._alive_time - frametime
+        if self._alive_time <= 0:
+            self._status = self.HIDE
 
     def on_render(self, display_surf):
         if self._status == self.SPAWN:
-            display_surf.blit(self.SPAWN_SPRITE, self._position, self._sprite_rect)
+            display_surf.blit(self.SPAWN_SPRITE, self.position, self._sprite_rect)
         elif self._status == self.IDLE:
-            display_surf.blit(self.IDLE_SPRITE, self._position, self._sprite_rect)
+            display_surf.blit(self.IDLE_SPRITE, self.position, self._sprite_rect)
+        elif self._status == self.HIDE:
+            display_surf.blit(self.HIDE_SPRITE, self.position, self._sprite_rect)
         else:
-            display_surf.blit(self.DEATH_SPRITE, self._position, self._sprite_rect)
+            display_surf.blit(self.DEATH_SPRITE, self.position, self._sprite_rect)
 
     def on_event(self, event):
-        pass
+        if not self._status == self.IDLE:
+            return
  
 class App():
     def __init__(self):
@@ -83,7 +97,7 @@ class App():
 
     def get_random_spawn_location(self):
         if(len(self._free_spawn_locations) == 0):
-            return (-1)
+            return (0, 0)
 
         retval = self._free_spawn_locations[random.randrange(0, len(self._free_spawn_locations))]
 
@@ -100,8 +114,8 @@ class App():
 
             if zombie.should_be_destroyed:
                 location = zombie.position
-                self._free_spawn_location.remove(location)
-                self._occupied_spawn_location.append(location)
+                self._free_spawn_locations.append(location)
+                self._occupied_spawn_locations.remove(location)
                 self._alive_zombies.remove(zombie)
 
         self._spawn_timer = self._spawn_timer - self._frametime
@@ -111,6 +125,7 @@ class App():
             self._free_spawn_locations.remove(spawn_location)
 
             self._alive_zombies.append(Zombie(spawn_location))
+            self._spawn_timer = SPAWN_TIME
 
     def on_render(self):
         self._display_surf.blit(self._background_sprite, self._background_sprite.get_rect())
