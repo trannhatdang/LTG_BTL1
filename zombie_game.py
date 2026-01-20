@@ -2,7 +2,6 @@ import pygame
 import time
 import os
 import random
-import cevent
 from pygame.locals import *
 
 ZOMBIE_IDLE_IMG = os.path.join('data', 'zombie', 'zombie_idle.png')
@@ -47,7 +46,7 @@ class Zombie:
     def on_event(self, event):
         pass
 
-    def _animate():
+    def _animate(self):
         new_cords = self.anim_frame * 256
         self.sprite_rect = pygame.Rect(256 + self.anim_frame, 256 + self.anim_frame, 256, 256)
         pass
@@ -58,13 +57,15 @@ class App():
         self._alive_zombies = []
 
         self._free_spawn_locations = self.create_spawn_locations()
-        self._occupied_spawn_locations = []
+        self._occupied_spawn_locations = SPAWN_LOCATIONS
+
+        self._background_sprite = pygame.image.load(BACKGROUND_IMG)
 
         self._spawn_timer = SPAWN_TIME
         self._frametime = 0
         random.seed(time.time())
 
-        self.size = self.weight, self.height = 1280, 720
+        self.size = self.weight, self.height = 1584, 887
 
     def create_spawn_locations(self):
         retval = []
@@ -74,7 +75,7 @@ class App():
         return retval
 
     def get_random_spawn_location(self):
-        retval = self._spawn_locations[random.randrange(0, len(self._spawn_locations))]
+        retval = self._free_spawn_locations[random.randrange(0, len(self._free_spawn_locations))]
 
         return retval
 
@@ -102,8 +103,10 @@ class App():
             self._alive_zombies.append(Zombie(spawn_location))
 
     def on_render(self):
-        for zombie in self._alive_zombies:
-            self._display_surf.blit(zombie.SPRITE, zombie.position)
+        self._display_surf.blit(self._background_sprite, self._background_sprite.get_rect())
+        pygame.display.flip()
+        #for zombie in self._alive_zombies:
+            #self._display_surf.blit(zombie.SPRITE, zombie.position)
 
     def on_event(self, event):
         if event.type == pygame.QUIT:
