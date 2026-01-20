@@ -10,7 +10,9 @@ ZOMBIE_IDLE_IMG = os.path.join(ZOMBIE_PATH, 'zombie_idle.png')
 ZOMBIE_DEATH_IMG = os.path.join(ZOMBIE_PATH, 'zombie_death.png')
 BACKGROUND_IMG = os.path.join('data', 'background.png')
 SPAWN_TIME = 1
-SPAWN_LOCATIONS = [(320, 120), (300, 500)]
+SPAWN_LOCATIONS = [(310, 120), (760, 120), (1210, 120),
+                   (310, 390), (760, 390), (1210, 390),
+                   (310, 660), (760, 660), (1210, 660)]
 
 class Zombie:
     def __init__(self, position):
@@ -26,21 +28,21 @@ class Zombie:
         self._alive_time = 1
 
         self._anim_frame = 0
-        self._anim_timer = 0.5 #2 fps
+        self._default_anim_timer = 0.0833
+        self._anim_timer = self._default_anim_timer #4 fps
         self._sprite_rect = pygame.Rect(0, 0, 64, 64)
 
         self._status = self.SPAWN
 
         self.should_be_destroyed = False
         self.box_collider = (10, 10)
-        pass
 
     def _animate(self, frametime):
         self._anim_timer = self._anim_timer - frametime
         if self._anim_timer <= 0:
             new_cords = self._anim_frame * 64
             self._sprite_rect = pygame.Rect(new_cords, 0, 64, 64)
-            self._anim_timer = 0.5
+            self._anim_timer = self._default_anim_timer
             self._anim_frame = (self._anim_frame + 1) % 8
 
     def on_loop(self, frametime):
@@ -78,13 +80,6 @@ class App():
         random.seed(time.time())
 
         self.size = self.weight, self.height = 1584, 887
-
-    def create_spawn_locations(self):
-        retval = []
-        for i in range(3):
-            for j in range(3):
-                retval.append((300 + i * 256, 100 + j * 256))
-        return retval
 
     def get_random_spawn_location(self):
         if(len(self._free_spawn_locations) == 0):
