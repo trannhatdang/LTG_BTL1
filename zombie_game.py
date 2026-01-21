@@ -23,6 +23,17 @@ SPAWN_LOCATIONS = [(310, 120), (760, 120), (1210, 120),
 COLLIDER_EVENT = pygame.event.custom_type()
 DEFAULT_COLLIDER_OFFSET = (10, 10)
 
+class AnimatedObject:
+    def __init__(self, position):
+        self._position = position
+        pass
+
+    def on_loop(self, frametime):
+        pass
+
+    def on_render(self, display_surf):
+        pass
+
 class HitParticles:
     def __init__(self, position, beam_num = 4, alive_time = 0.0833 * 4):
         self._position = position
