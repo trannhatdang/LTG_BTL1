@@ -26,7 +26,7 @@ class HitParticles:
         self._position = position
         self._star_beam = random.randrange(0, 4)
         self._anim_frame = 0
-        self._init_anim_timer = 0.020333
+        self._init_anim_timer = 0.0069444444
         self._anim_timer = self._init_anim_timer 
 
         beam_0_deg = math.radians(random.randrange(45, 68))
@@ -44,7 +44,6 @@ class HitParticles:
         self._beam_2 = [self.get_init_pos(self._beam_2_vel, self._position[1])]
         self._beam_3 = [self.get_init_pos(self._beam_3_vel, self._position[1])]
 
-
     def get_init_pos(self, vel, min_height):
         retval = (self._position[0] + 32, self._position[1] + 32)
         while retval[1] > min_height:
@@ -54,32 +53,44 @@ class HitParticles:
 
         return retval
 
+    def render_dot(self, display_surf, position, sz):
+        mid_point = (position[0] + sz/2, position[1] + sz/2)
+
+        for i in range(sz):
+            for j in range(sz):
+                point = (position[0] + i, position[1] + j)
+                #print(point, mid_point)
+                dist = math.sqrt(pow(point[0] - mid_point[0], 2) + pow(point[1] - mid_point[1], 2))
+
+                if dist < sz:
+                    display_surf.set_at(point, (255, 0, 0))
+
     def on_loop(self, frametime):
         if self._anim_timer > 0:
             self._anim_timer = self._anim_timer - frametime
             return
 
-        self._beam_0_vel = (self._beam_0_vel[0], self._beam_0_vel[1] + 0.1)
-        self._beam_1_vel = (self._beam_1_vel[0], self._beam_1_vel[1] + 0.1)
-        self._beam_2_vel = (self._beam_2_vel[0], self._beam_2_vel[1] + 0.1)
-        self._beam_3_vel = (self._beam_3_vel[0], self._beam_3_vel[1] + 0.1)
+        self._beam_0_vel = (self._beam_0_vel[0], self._beam_0_vel[1] + 0.05)
+        self._beam_1_vel = (self._beam_1_vel[0], self._beam_1_vel[1] + 0.05)
+        self._beam_2_vel = (self._beam_2_vel[0], self._beam_2_vel[1] + 0.05)
+        self._beam_3_vel = (self._beam_3_vel[0], self._beam_3_vel[1] + 0.05)
 
         beam_0_last_pos = self._beam_0[self._anim_frame]
         beam_1_last_pos = self._beam_1[self._anim_frame]
         beam_2_last_pos = self._beam_2[self._anim_frame]
         beam_3_last_pos = self._beam_3[self._anim_frame]
 
-        beam_0_next_pos = (math.floor(beam_0_last_pos[0] + self._beam_0_vel[0]), math.floor(beam_0_last_pos[1] + self._beam_0_vel[1]))
-        beam_1_next_pos = (math.floor(beam_1_last_pos[0] + self._beam_1_vel[0]), math.floor(beam_1_last_pos[1] + self._beam_1_vel[1]))
-        beam_2_next_pos = (math.floor(beam_2_last_pos[0] + self._beam_2_vel[0]), math.floor(beam_2_last_pos[1] + self._beam_2_vel[1]))
-        beam_3_next_pos = (math.floor(beam_3_last_pos[0] + self._beam_3_vel[0]), math.floor(beam_3_last_pos[1] + self._beam_3_vel[1]))
+        beam_0_next_pos = (math.ceil(beam_0_last_pos[0] + self._beam_0_vel[0]), math.ceil(beam_0_last_pos[1] + self._beam_0_vel[1]))
+        beam_1_next_pos = (math.ceil(beam_1_last_pos[0] + self._beam_1_vel[0]), math.ceil(beam_1_last_pos[1] + self._beam_1_vel[1]))
+        beam_2_next_pos = (math.ceil(beam_2_last_pos[0] + self._beam_2_vel[0]), math.ceil(beam_2_last_pos[1] + self._beam_2_vel[1]))
+        beam_3_next_pos = (math.ceil(beam_3_last_pos[0] + self._beam_3_vel[0]), math.ceil(beam_3_last_pos[1] + self._beam_3_vel[1]))
 
         self._beam_0.append(beam_0_next_pos)
         self._beam_1.append(beam_1_next_pos)
         self._beam_2.append(beam_2_next_pos)
         self._beam_3.append(beam_3_next_pos)
 
-        if len(self._beam_0) >= 64:
+        if len(self._beam_0) >= 256:
             self._beam_0.pop(0)
             self._beam_1.pop(0)
             self._beam_2.pop(0)
@@ -91,13 +102,13 @@ class HitParticles:
 
     def on_render(self, display_surf):
         for dot in self._beam_0:
-            display_surf.set_at(dot, (255, 0, 0))
+            self.render_dot(display_surf, dot, 10)
         for dot in self._beam_1:
-            display_surf.set_at(dot, (255, 0, 0))
+            self.render_dot(display_surf, dot, 10)
         for dot in self._beam_2:
-            display_surf.set_at(dot, (255, 0, 0))
+            self.render_dot(display_surf, dot, 10)
         for dot in self._beam_3:
-            display_surf.set_at(dot, (255, 0, 0))
+            self.render_dot(display_surf, dot, 10)
 
 class Zombie:
     def __init__(self, position):
