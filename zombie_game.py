@@ -24,23 +24,27 @@ COLLIDER_EVENT = pygame.event.custom_type()
 DEFAULT_COLLIDER_OFFSET = (10, 10)
 
 class HitParticles:
-    def __init__(self, position, beam_num = 4):
+    def __init__(self, position, beam_num = 4, alive_time = 0.0833 * 4):
         self._position = position
         self._star_beam = random.randrange(0, 4)
         self._anim_frame = 0
         self._init_anim_timer = 0.020444
         self._anim_timer = self._init_anim_timer 
         self._beam_num = beam_num
+        self._alive_timer = alive_time
 
         vel = (3, 3)
         beam_deg_range = math.floor(90/self._beam_num)
         beams_deg = [random.randrange(45, 45 + beam_deg_range)]
         for i in range(1, self._beam_num):
-            beams_deg.append(random.randrange(beams_deg[i-1], beams_deg[i-1] + beam_deg_range))
+            start_deg = 45 * i
+            beams_deg.append(random.randrange(start_deg, start_deg + beam_deg_range))
+
 
         self._beams_vel = []
         for i in range(self._beam_num):
-            base_vel = (-math.cos(math.radians(beams_deg[i])), -math.sin(math.radians(beams_deg[i])))
+            deg = beams_deg[i]
+            base_vel = (math.cos(math.radians(deg)), -math.sin(math.radians(deg)))
             self._beams_vel.append(tuple(map(operator.mul, base_vel, vel)))
 
         self._beams = []
@@ -78,6 +82,9 @@ class HitParticles:
             self._anim_timer = self._anim_timer - frametime
             return
 
+        if self._alive_timer <= 0:
+            return
+
         acc = [0, 0.08]
 
         for i in range(self._beam_num):
@@ -94,8 +101,11 @@ class HitParticles:
 
         self._anim_frame = min(self._anim_frame + 1, 256)
         self._anim_timer = self._init_anim_timer
+        self._alive_timer = self._alive_timer - frametime
 
     def on_render(self, display_surf):
+        if self._anim_timer <= 0:
+            return
         for beam in self._beams:
             self.render_beam(display_surf, beam, 4)
 
