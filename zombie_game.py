@@ -240,7 +240,7 @@ class Zombie(GameObject):
         self._alive_time = self._alive_time - frametime
         if self._alive_time <= 0:
             self.status = self.HIDE
-            zombie_hidden_event = pygame.event.EVENT(ZOMBIE_HIDDEN_EVENT)
+            zombie_hidden_event = pygame.event.Event(ZOMBIE_HIDDEN_EVENT)
             pygame.event.post(zombie_hidden_event)
 
         if self.hit_particles:
@@ -267,8 +267,10 @@ class Zombie(GameObject):
         super().on_event(event)
 
     def die(self):
-        if self._is_bonkable or self.status == self.DEATH:
+        if not self._is_bonkable or self.status == self.DEATH:
             return
+
+        #print('hi')
 
         self.status = self.DEATH
         self._anim_frame = 0
@@ -367,7 +369,7 @@ class App():
         if event.type == pygame.QUIT:
             self._running = False
 
-        if event.type == pygame.MOUSEBUTTONDOWN
+        if event.type == pygame.MOUSEBUTTONDOWN:
             self.on_mouse_down(event)
 
         if event.type == ZOMBIE_HIDDEN_EVENT:
