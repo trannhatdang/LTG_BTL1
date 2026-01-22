@@ -26,13 +26,13 @@ DEFAULT_COLLIDER_OFFSET = (10, 10)
 class GameObject:
     def __init__(self, position):
         self.position = position
-        self.children_obj = []
+        self.children_objects = []
 
         self.should_be_destroyed = False
         pass
 
     def on_loop(self, frametime):
-        for child in self.children_obj:
+        for child in self.children_objects:
             if child.should_be_destroyed:
                 child.on_destroy()
                 self.children_obj.remove(child)
@@ -42,17 +42,17 @@ class GameObject:
         pass
 
     def on_render(self, display_surf):
-        for child in self.children_obj:
+        for child in self.children_objects:
             child.on_render(display_surf)
         pass
 
     def on_event(self, event):
-        for child in self.children_obj:
+        for child in self.children_objects:
             child.on_event(event)
         pass
 
     def on_destroy(self):
-        for child in self.children_obj:
+        for child in self.children_objects:
             child.on_destroy()
 
         self.should_be_destroyed = True
@@ -183,6 +183,7 @@ class HitParticles:
 class Zombie(GameObject):
     def __init__(self, position):
         super().__init__(position)
+
         self.SPAWN = 0
         self.IDLE = 1
         self.DEATH = 2
@@ -216,6 +217,8 @@ class Zombie(GameObject):
             self._anim_frame = (self._anim_frame + 1) % 8
 
     def on_loop(self, frametime):
+        super().on_loop(frametime)
+
         self._animate(frametime)
         if (self.status == self.DEATH or self.status == self.HIDE) and self._anim_frame >= 7:
             self.on_destroy()
@@ -235,6 +238,8 @@ class Zombie(GameObject):
             obj.on_render(display_surf)
 
     def on_render(self, display_surf):
+        super().on_render(display_surf)
+
         if self.status == self.SPAWN:
             display_surf.blit(self.SPAWN_SPRITE, self.position, self._sprite_rect)
         elif self.status == self.IDLE:
