@@ -14,6 +14,7 @@ ZOMBIE_SPAWN_IMG = os.path.join(ZOMBIE_PATH, "zombie_spawn.png")
 ZOMBIE_IDLE_IMG = os.path.join(ZOMBIE_PATH, "zombie_idle.png")
 ZOMBIE_DEATH_IMG = os.path.join(ZOMBIE_PATH, "zombie_death.png")
 ZOMBIE_HIDE_IMG = os.path.join(ZOMBIE_PATH, "zombie_hide.png")
+HIT_EFFECT_IMG = os.path.join("data", "hit_effect.png")
 BACKGROUND_IMG = os.path.join("data", "background.png")
 STAR_IMG = os.path.join("data", "star.png")
 VCR_OSD_MONO_FONT = os.path.join(FONT_PATH, "VCR_OSD_MONO.ttf")
@@ -25,14 +26,36 @@ COLLIDER_EVENT = pygame.event.custom_type()
 DEFAULT_COLLIDER_OFFSET = (10, 10)
 
 class AnimatedObject:
-    def __init__(self, position):
+    def __init__(self, position, img_path, frame_rate = 0.0833, frame_num):
         self._position = position
+        self._anim_frame = 0
+        self._init_anim_timer = 0.0833
+        self._anim_timer = self._init_anim_timer
+        self._frame_num = frame_num
+        self._anim_rect = pygame.Rect(0, 0, 64, 64)
+
+        self._sprite = pygame.image.load(img_path)
         pass
 
     def on_loop(self, frametime):
+        if self._anim_frame >= frame_num:
+            return
+
+        if self._anim_timer >= 0:
+            self._anim_timer = self._anim_timer - frametime
+            return
+
+        new_cords = 64 * self._anim_frame
+        self._anim_rect = pygame.Rect(new_cords, 0, 64, 64)
+
+        self._anim_timer = self._init_anim_timer
         pass
 
     def on_render(self, display_surf):
+        if self._anim_frame >= frame_num:
+            return
+        
+        display_surf.blit(self._sprite, self._position, self._anim_rect)
         pass
 
 class HitParticles:
