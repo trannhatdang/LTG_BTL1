@@ -35,7 +35,7 @@ class GameObject:
         for child in self.children_objects:
             if child.should_be_destroyed:
                 child.on_destroy()
-                self.children_obj.remove(child)
+                self.children_objects.remove(child)
                 continue
 
             child.on_loop(frametime)
