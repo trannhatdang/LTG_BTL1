@@ -25,9 +25,44 @@ SPAWN_LOCATIONS = [(310, 120), (760, 120), (1210, 120),
 COLLIDER_EVENT = pygame.event.custom_type()
 DEFAULT_COLLIDER_OFFSET = (10, 10)
 
-class AnimatedObject:
+class GameObject:
+    def __init__(self, position):
+        self.position = position
+        self.children_obj = []
+
+        self.should_be_destroyed = False
+        pass
+
+    def on_loop(self, frametime):
+        for child in self.children_obj:
+            if child.should_be_destroyed:
+                child.on_destroy()
+                self.children_obj.remove(child)
+                continue
+
+            child.on_loop(frametime)
+        pass
+
+    def on_render(self, display_surf):
+        for child in self.children_obj:
+            child.on_render(display_surf)
+        pass
+
+    def on_event(self, event):
+        for child in self.children_obj:
+            child.on_event(event)
+        pass
+
+    def on_destroy(self):
+        for child in self.children_obj:
+            child.on_destroy()
+
+        self.should_be_destroyed = True
+        pass
+
+class AnimatedObject(GameObject):
     def __init__(self, position, img_path, frame_rate = 0.0833, frame_num):
-        self._position = position
+        super().__init__(position)
         self._anim_frame = 0
         self._init_anim_timer = 0.0833
         self._anim_timer = self._init_anim_timer
@@ -38,13 +73,16 @@ class AnimatedObject:
         pass
 
     def on_loop(self, frametime):
+        super().on_loop(frametime)
         if self._anim_frame >= frame_num:
+            self.should_be_destroyed = True
             return
 
         if self._anim_timer >= 0:
             self._anim_timer = self._anim_timer - frametime
             return
 
+        self._anim_frame = self._anim_frame + 1
         new_cords = 64 * self._anim_frame
         self._anim_rect = pygame.Rect(new_cords, 0, 64, 64)
 
@@ -52,10 +90,10 @@ class AnimatedObject:
         pass
 
     def on_render(self, display_surf):
+        super().on_render(display_surf)
         if self._anim_frame >= frame_num:
             return
-        
-        display_surf.blit(self._sprite, self._position, self._anim_rect)
+        display_surf.blit(self._sprite, self.position, self._anim_rect)
         pass
 
 class HitParticles:
@@ -144,8 +182,9 @@ class HitParticles:
         for beam in self._beams:
             self.render_beam(display_surf, beam, 4)
 
-class Zombie:
+class Zombie(GameObject):
     def __init__(self, position):
+        super().__init__(position)
         self.SPAWN = 0
         self.IDLE = 1
         self.DEATH = 2
@@ -168,9 +207,7 @@ class Zombie:
 
         self.hit_particles = None
 
-        self.should_be_destroyed = False
         self.status = self.SPAWN
-        self.position = position
 
     def _animate(self, frametime):
         self._anim_timer = self._anim_timer - frametime
@@ -183,7 +220,7 @@ class Zombie:
     def on_loop(self, frametime):
         self._animate(frametime)
         if (self.status == self.DEATH or self.status == self.HIDE) and self._anim_frame >= 7:
-            self.should_be_destroyed = True
+            self.on_destroy()
         elif self.status == self.SPAWN and self._anim_frame >= 7:
             self.status = self.IDLE
             self._is_bonkable = True
@@ -194,6 +231,10 @@ class Zombie:
 
         if self.hit_particles:
             self.hit_particles.on_loop(frametime)
+
+        for obj in self._children_objects:
+            obj.on_loop(frametime)
+            obj.on_render(display_surf)
 
     def on_render(self, display_surf):
         if self.status == self.SPAWN:
@@ -224,12 +265,13 @@ class Zombie:
         min_height = self.position[1]
         max_height = self.position[1] + 64 + self._collider_offset[1]
 
-        if mouse_x >= min_width and mouse_x <= max_width and mouse_y >= min_height and mouse_y <= max_height:
+        if mouse_x >= min_width and mouse_x <= max_width and mouse_y >= min_height and mouse_y <= max_height and self._is_bonkable:
             self.status = self.DEATH
             self._anim_frame = 0
-            self._is_bonkable = True
+            self._is_bonkable = False
 
             self.hit_particles = HitParticles(self.position)
+            self.children_objects.append(AnimatedObject(position = tuple(map(operator.add, self.position, (-22, 0))), img_path = HIT_EFFECT_IMG, frame_num = 3))
  
 class App():
     def __init__(self):
@@ -286,7 +328,6 @@ class App():
                     self._hitrate = self._points / (self._points + self._misses)
                 else:
                     self._hitrate = 0
-
 
         self._spawn_timer = self._spawn_timer - self._frametime
         if self._spawn_timer <= 0 and len(self._free_spawn_locations) > 0:
