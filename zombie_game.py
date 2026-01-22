@@ -60,7 +60,6 @@ class GameObject:
 
 class AnimatedObject(GameObject):
     def __init__(self, position, img_path, frame_rate = 0.0833, frame_num = 8):
-        super().__init__(position)
         self._anim_frame = 0
         self._init_anim_timer = 0.0833
         self._anim_timer = self._init_anim_timer
@@ -68,11 +67,11 @@ class AnimatedObject(GameObject):
         self._anim_rect = pygame.Rect(0, 0, 64, 64)
 
         self._sprite = pygame.image.load(img_path)
+        super().__init__(position)
         pass
 
     def on_loop(self, frametime):
-        super().on_loop(frametime)
-        if self._anim_frame >= frame_num:
+        if self._anim_frame >= self._frame_num:
             self.should_be_destroyed = True
             return
 
@@ -85,13 +84,14 @@ class AnimatedObject(GameObject):
         self._anim_rect = pygame.Rect(new_cords, 0, 64, 64)
 
         self._anim_timer = self._init_anim_timer
+        super().on_loop(frametime)
         pass
 
     def on_render(self, display_surf):
-        super().on_render(display_surf)
-        if self._anim_frame >= frame_num:
+        if self._anim_frame >= self._frame_num:
             return
         display_surf.blit(self._sprite, self.position, self._anim_rect)
+        super().on_render(display_surf)
         pass
 
 class HitParticles:
@@ -182,8 +182,6 @@ class HitParticles:
 
 class Zombie(GameObject):
     def __init__(self, position):
-        super().__init__(position)
-
         self.SPAWN = 0
         self.IDLE = 1
         self.DEATH = 2
@@ -207,6 +205,7 @@ class Zombie(GameObject):
         self.hit_particles = None
 
         self.status = self.SPAWN
+        super().__init__(position)
 
     def _animate(self, frametime):
         self._anim_timer = self._anim_timer - frametime
@@ -217,7 +216,6 @@ class Zombie(GameObject):
             self._anim_frame = (self._anim_frame + 1) % 8
 
     def on_loop(self, frametime):
-        super().on_loop(frametime)
 
         self._animate(frametime)
         if (self.status == self.DEATH or self.status == self.HIDE) and self._anim_frame >= 7:
@@ -233,12 +231,9 @@ class Zombie(GameObject):
         if self.hit_particles:
             self.hit_particles.on_loop(frametime)
 
-        for obj in self._children_objects:
-            obj.on_loop(frametime)
-            obj.on_render(display_surf)
+        super().on_loop(frametime)
 
     def on_render(self, display_surf):
-        super().on_render(display_surf)
 
         if self.status == self.SPAWN:
             display_surf.blit(self.SPAWN_SPRITE, self.position, self._sprite_rect)
@@ -251,6 +246,8 @@ class Zombie(GameObject):
 
         if self.hit_particles:
             self.hit_particles.on_render(display_surf)
+
+        super().on_render(display_surf)
 
     def on_event(self, event):
         if not self.status == self.IDLE:
@@ -275,6 +272,8 @@ class Zombie(GameObject):
 
             self.hit_particles = HitParticles(self.position)
             self.children_objects.append(AnimatedObject(position = tuple(map(operator.add, self.position, (-22, 0))), img_path = HIT_EFFECT_IMG, frame_num = 3))
+
+        super().on_event(event)
  
 class App():
     def __init__(self):
