@@ -59,9 +59,9 @@ class GameObject:
         pass
 
 class AnimatedObject(GameObject):
-    def __init__(self, position, img_path, frame_rate = 0.0833, frame_num = 8):
+    def __init__(self, position, img_path, framerate = 12, frame_num = 8):
         self._anim_frame = 0
-        self._init_anim_timer = 0.0833
+        self._init_anim_timer = 1/framerate
         self._anim_timer = self._init_anim_timer
         self._frame_num = frame_num
         self._anim_rect = pygame.Rect(0, 0, 64, 64)
@@ -105,11 +105,11 @@ class HitParticles:
         self._alive_timer = alive_time
 
         vel = (3, 3)
-        beam_deg_range = math.floor(90/self._beam_num)
-        beams_deg = [random.randrange(45, 45 + beam_deg_range)]
-        for i in range(1, self._beam_num):
-            start_deg = 45 * i
-            beams_deg.append(random.randrange(start_deg, start_deg + beam_deg_range))
+        #beam_deg_range = math.floor(90/self._beam_num)
+        beams_deg = [random.randrange(-45, -23), random.randrange(-23, 0), random.randrange(180, 203), random.randrange(203, 225)]
+        #for i in range(1, self._beam_num):
+        #    start_deg = 45 * i
+        #    beams_deg.append(random.randrange(start_deg, start_deg + beam_deg_range))
 
 
         self._beams_vel = []
@@ -118,14 +118,28 @@ class HitParticles:
             base_vel = (math.cos(math.radians(deg)), -math.sin(math.radians(deg)))
             self._beams_vel.append(tuple(map(operator.mul, base_vel, vel)))
 
+        print(self._beams_vel)
+
         self._beams = []
         for i in range(self._beam_num):
-            self._beams.append([self.get_init_pos(self._beams_vel[i], self._position[1] + 10)])
+            self._beams.append(
+                    [
+                        self.get_init_pos(
+                                self._beams_vel[i],
+                                (self._position[0], self._position[0] + 64, self._position[1], self._position[1] + 64)
+                        )
+                    ]
+            )
 
-    def get_init_pos(self, vel, min_height):
+    def get_init_pos(self, vel, box):
         retval = (self._position[0] + 32, self._position[1] + 32)
-        while retval[1] > min_height:
+        left, right, top, bot = box
+        while True:
             retval = (retval[0] + vel[0], retval[1] + vel[1])
+            #print(retval)
+
+            if retval[0] < left or retval[0] > right or retval[1] < top or retval[1] > bot:
+                break
 
         retval = (math.floor(retval[0]), math.floor(retval[1]))
 
@@ -234,7 +248,6 @@ class Zombie(GameObject):
         super().on_loop(frametime)
 
     def on_render(self, display_surf):
-
         if self.status == self.SPAWN:
             display_surf.blit(self.SPAWN_SPRITE, self.position, self._sprite_rect)
         elif self.status == self.IDLE:
@@ -271,7 +284,7 @@ class Zombie(GameObject):
             self._is_bonkable = False
 
             self.hit_particles = HitParticles(self.position)
-            self.children_objects.append(AnimatedObject(position = tuple(map(operator.add, self.position, (-22, 0))), img_path = HIT_EFFECT_IMG, frame_num = 3))
+            self.children_objects.append(AnimatedObject(position = tuple(map(operator.add, self.position, (0, -22))), img_path = HIT_EFFECT_IMG, framerate = 6, frame_num = 2))
 
         super().on_event(event)
  
