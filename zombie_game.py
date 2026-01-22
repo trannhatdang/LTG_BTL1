@@ -22,6 +22,7 @@ DEFAULT_ZOMBIE_ALIVE_TIME = 5
 SPAWN_LOCATIONS = [(310, 120), (760, 120), (1210, 120),
                    (310, 390), (760, 390), (1210, 390),
                    (310, 660), (760, 660), (1210, 660)]
+#SPAWN_LOCATIONS = list(map(lambda x: tuple(map(operator.mul, x, (0.5, 0.5))), SPAWN_LOCATIONS))
 ZOMBIE_HIDDEN_EVENT = pygame.event.custom_type()
 DEFAULT_COLLIDER_OFFSET = (10, 10)
 
@@ -230,7 +231,6 @@ class Zombie(GameObject):
             self._anim_frame = (self._anim_frame + 1) % 8
 
     def on_loop(self, frametime):
-        self._animate(frametime)
         if (self.status == self.DEATH or self.status == self.HIDE) and self._anim_frame >= 7:
             self.on_destroy()
         elif self.status == self.SPAWN and self._anim_frame >= 7:
@@ -238,10 +238,13 @@ class Zombie(GameObject):
             self._is_bonkable = True
 
         self._alive_time = self._alive_time - frametime
-        if self._alive_time <= 0:
+        if self._alive_time <= 0 and self.status != self.HIDE:
+            self._anim_frame = 0
             self.status = self.HIDE
             zombie_hidden_event = pygame.event.Event(ZOMBIE_HIDDEN_EVENT)
             pygame.event.post(zombie_hidden_event)
+
+        self._animate(frametime)
 
         if self.hit_particles:
             self.hit_particles.on_loop(frametime)
@@ -294,6 +297,7 @@ class App():
         self._occupied_spawn_locations = []
 
         self._background_sprite = pygame.image.load(BACKGROUND_IMG)
+        #self._background_sprite = pygame.transform.scale(self._background_sprite, (1584/2, 887/2))
         self._font = None
 
         self._spawn_time = DEFAULT_SPAWN_TIME
@@ -334,8 +338,6 @@ class App():
                 self._occupied_spawn_locations.remove(location)
                 self._alive_zombies.remove(zombie)
 
-                self._spawn_time = max(self._spawn_time - self._streak * 0.05, .05)
-
                 if(self._points + self._misses != 0):
                     self._hitrate = self._points / (self._points + self._misses)
                 else:
@@ -350,6 +352,8 @@ class App():
             self._alive_zombies.append(Zombie(spawn_location, alive_time = max(DEFAULT_ZOMBIE_ALIVE_TIME - self._streak * 0.25, 0.25)))
             self._curr_spawn_timer = self._spawn_time
 
+            print(self._spawn_time)
+
     def on_render(self):
         self._display_surf.blit(self._background_sprite, self._background_sprite.get_rect())
         for zombie in self._alive_zombies:
@@ -358,10 +362,12 @@ class App():
         points_surf = self._font.render("POINTS: " + str(self._points), False, (0, 0, 0))
         misses_surf = self._font.render("MISSES: " + str(self._misses), False, (0, 0, 0))
         hitrate_surf = self._font.render("HIT RATE: " + str(self._hitrate), False, (0, 0, 0))
+        #spawn_time_surf = self._font.render("SPAWN_TIME: " + str(self._spawn_time), False, (0, 0, 0))
 
         self._display_surf.blit(points_surf, (10, 50))
         self._display_surf.blit(misses_surf, (10, 75))
         self._display_surf.blit(hitrate_surf, (10, 100))
+        #self._display_surf.blit(spawn_time_surf, (10, 125))
 
         pygame.display.flip()
 
@@ -398,6 +404,7 @@ class App():
         if has_hit:
             self._streak = self._streak + 1
             self._points = self._points + 1
+            self._spawn_time = max(DEFAULT_SPAWN_TIME - self._streak * 0.005, .05)
         else:
             self._streak = 0
             self._misses = self._misses + 1
