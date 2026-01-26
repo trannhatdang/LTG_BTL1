@@ -23,6 +23,7 @@ SPAWN_LOCATIONS = [(310, 120), (760, 120), (1210, 120),
                    (310, 390), (760, 390), (1210, 390),
                    (310, 660), (760, 660), (1210, 660)]
 #SPAWN_LOCATIONS = list(map(lambda x: tuple(map(operator.mul, x, (0.5, 0.5))), SPAWN_LOCATIONS))
+BACKGROUND_MUSIC = os.path.join("data", "background_music.mp3")
 ZOMBIE_HIDDEN_EVENT = pygame.event.custom_type()
 DEFAULT_COLLIDER_OFFSET = (10, 10)
 
@@ -113,7 +114,6 @@ class HitParticles:
         #for i in range(1, self._beam_num):
         #    start_deg = 45 * i
         #    beams_deg.append(random.randrange(start_deg, start_deg + beam_deg_range))
-
 
         self._beams_vel = []
         for i in range(self._beam_num):
@@ -302,6 +302,7 @@ class App():
         self._font = None
 
         self._spawn_time = DEFAULT_SPAWN_TIME
+        self._alive_time = DEFAULT_ZOMBIE_ALIVE_TIME
         self._curr_spawn_timer = self._spawn_time
         self._frametime = 0
 
@@ -339,19 +340,21 @@ class App():
                 self._occupied_spawn_locations.remove(location)
                 self._alive_zombies.remove(zombie)
 
-                if(self._points + self._misses != 0):
-                    self._hitrate = self._points / (self._points + self._misses)
-                else:
-                    self._hitrate = 0
-
         self._curr_spawn_timer = self._curr_spawn_timer - self._frametime
         if self._curr_spawn_timer <= 0 and len(self._free_spawn_locations) > 0:
             spawn_location = self.get_random_spawn_location()
             self._occupied_spawn_locations.append(spawn_location)
             self._free_spawn_locations.remove(spawn_location)
 
-            self._alive_zombies.append(Zombie(spawn_location, alive_time = max(DEFAULT_ZOMBIE_ALIVE_TIME - self._streak * 0.125, 1)))
+            self._alive_zombies.append(Zombie(spawn_location, alive_time = self._alive_time))
             self._curr_spawn_timer = self._spawn_time
+
+        self._spawn_time = min(max(DEFAULT_SPAWN_TIME - math.log(max(self._streak, 1))/5, .1), DEFAULT_SPAWN_TIME)
+        self._alive_time = min(max(DEFAULT_ZOMBIE_ALIVE_TIME - math.log(max(self._streak, 1)), 1), DEFAULT_ZOMBIE_ALIVE_TIME)
+        if(self._points + self._misses != 0):
+            self._hitrate = self._points / (self._points + self._misses)
+        else:
+            self._hitrate = 0
 
     def on_render(self):
         self._display_surf.blit(self._background_sprite, self._background_sprite.get_rect())
@@ -361,14 +364,16 @@ class App():
         points_surf = self._font.render("POINTS: " + str(self._points), False, (0, 0, 0))
         misses_surf = self._font.render("MISSES: " + str(self._misses), False, (0, 0, 0))
         hitrate_surf = self._font.render("HIT RATE: " + str(self._hitrate), False, (0, 0, 0))
-        spawn_time_surf = self._font.render("SPAWN_TIME: " + str(self._spawn_time), False, (0, 0, 0))
+        spawn_time_surf = self._font.render("SPAWN_TIME: " + str(round(self._spawn_time, 2)), False, (0, 0, 0))
+        alive_time_surf = self._font.render("ALIVE_TIME: " + str(round(self._alive_time, 2)), False, (0, 0, 0))
         streak_surf = self._font.render("STREAK: " + str(self._streak), False, (0, 0, 0))
 
         self._display_surf.blit(points_surf, (10, 50))
         self._display_surf.blit(misses_surf, (10, 75))
         self._display_surf.blit(hitrate_surf, (10, 100))
         self._display_surf.blit(spawn_time_surf, (10, 125))
-        self._display_surf.blit(streak_surf, (10, 150))
+        self._display_surf.blit(alive_time_surf, (10, 150))
+        self._display_surf.blit(streak_surf, (10, 175))
 
         pygame.display.flip()
 
@@ -380,8 +385,8 @@ class App():
             self.on_mouse_down(event)
 
         if event.type == ZOMBIE_HIDDEN_EVENT:
-            self._streak = self._streak - 1
-            self._misses = self._misses + 1
+            self._streak = max(self._streak - 1, 0)
+            self._misses = max(self._misses + 1, 0)
 
         for zombie in self._alive_zombies:
             zombie.on_event(event)
@@ -402,13 +407,11 @@ class App():
                 break
 
         if has_hit:
-            self._streak = self._streak + 1
-            self._points = self._points + 1
+            self._streak = max(self._streak + 1, 0)
+            self._points = max(self._points + 1, 0)
         else:
-            self._streak = self._streak - 1
-            self._misses = self._misses + 1
-
-        self._spawn_time = min(max(DEFAULT_SPAWN_TIME - math.log(max(self._streak, 1))/5, .1), DEFAULT_SPAWN_TIME)
+            self._streak = max(self._streak - 1, 0)
+            self._misses = max(self._misses + 1, 0)
 
     def on_cleanup(self):
         pygame.font.quit()
@@ -417,6 +420,10 @@ class App():
     def on_execute(self):
         if self.on_init() == False:
             self._running = False
+
+        sound = pygame.mixer.Sound(BACKGROUND_MUSIC)
+        sound.set_volume(0.2)
+        sound.play(loops = 1)
  
         while( self._running ):
             start_time = time.time()
@@ -428,6 +435,7 @@ class App():
 
             self._frametime = time.time() - start_time
         self.on_cleanup()
+
  
 if __name__ == "__main__" :
     game = App()
