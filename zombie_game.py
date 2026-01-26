@@ -17,13 +17,12 @@ BACKGROUND_IMG = os.path.join("data", "background.png")
 STAR_IMG = os.path.join("data", "star.png")
 VCR_OSD_MONO_FONT = os.path.join(FONT_PATH, "VCR_OSD_MONO.ttf")
 BONK_SFX = os.path.join("data", "bonk_sfx.mp3")
+BACKGROUND_MUSIC = os.path.join("data", "background_music.mp3")
 DEFAULT_SPAWN_TIME = 1
 DEFAULT_ZOMBIE_ALIVE_TIME = 5
-SPAWN_LOCATIONS = [(310, 120), (760, 120), (1210, 120),
-                   (310, 390), (760, 390), (1210, 390),
-                   (310, 660), (760, 660), (1210, 660)]
-#SPAWN_LOCATIONS = list(map(lambda x: tuple(map(operator.mul, x, (0.5, 0.5))), SPAWN_LOCATIONS))
-BACKGROUND_MUSIC = os.path.join("data", "background_music.mp3")
+TOP_LEFT_SPAWN = (140, 30)
+DIFF = (223, 135)
+SPAWN_LOCATIONS = [(TOP_LEFT_SPAWN[0] + DIFF[0] * i, TOP_LEFT_SPAWN[1] + DIFF[1] * j) for i in range(3) for j in range(3)]
 ZOMBIE_HIDDEN_EVENT = pygame.event.custom_type()
 DEFAULT_COLLIDER_OFFSET = (10, 10)
 
@@ -274,8 +273,6 @@ class Zombie(GameObject):
         if not self._is_bonkable or self.status == self.DEATH:
             return
 
-        #print('hi')
-
         self.status = self.DEATH
         self._anim_frame = 0
         self._is_bonkable = False
@@ -298,9 +295,10 @@ class App():
         self._occupied_spawn_locations = []
 
         self._background_sprite = pygame.image.load(BACKGROUND_IMG)
-        #self._background_sprite = pygame.transform.scale(self._background_sprite, (1584/2, 887/2))
+        self._background_sprite = pygame.transform.scale(self._background_sprite, (1584/1.33, 887/1.33))
         self._font = None
 
+        self._debug = False
         self._spawn_time = DEFAULT_SPAWN_TIME
         self._alive_time = DEFAULT_ZOMBIE_ALIVE_TIME
         self._curr_spawn_timer = self._spawn_time
@@ -311,7 +309,8 @@ class App():
         self._misses = 0
         self._hitrate = 0
 
-        self.size = self.weight, self.height = 1584, 887
+        self.size = self.weight, self.height = 1584/1.33, 887/1.33
+        print(self.size)
 
     def get_random_spawn_location(self):
         if(len(self._free_spawn_locations) == 0):
@@ -326,7 +325,7 @@ class App():
         pygame.init()
         pygame.font.init()
         pygame.mixer.init()
-        self._font = pygame.font.Font(VCR_OSD_MONO_FONT, 32)
+        self._font = pygame.font.Font(VCR_OSD_MONO_FONT, 24)
         self._display_surf = pygame.display.set_mode(self.size, pygame.HWSURFACE | pygame.DOUBLEBUF)
         self._running = True
  
@@ -363,17 +362,19 @@ class App():
 
         points_surf = self._font.render("POINTS: " + str(self._points), False, (0, 0, 0))
         misses_surf = self._font.render("MISSES: " + str(self._misses), False, (0, 0, 0))
-        hitrate_surf = self._font.render("HIT RATE: " + str(self._hitrate), False, (0, 0, 0))
-        spawn_time_surf = self._font.render("SPAWN_TIME: " + str(round(self._spawn_time, 2)), False, (0, 0, 0))
-        alive_time_surf = self._font.render("ALIVE_TIME: " + str(round(self._alive_time, 2)), False, (0, 0, 0))
-        streak_surf = self._font.render("STREAK: " + str(self._streak), False, (0, 0, 0))
+        hitrate_surf = self._font.render("ACC: " + str(round(self._hitrate, 2) * 100) + "%", False, (0, 0, 0))
 
-        self._display_surf.blit(points_surf, (10, 50))
-        self._display_surf.blit(misses_surf, (10, 75))
-        self._display_surf.blit(hitrate_surf, (10, 100))
-        self._display_surf.blit(spawn_time_surf, (10, 125))
-        self._display_surf.blit(alive_time_surf, (10, 150))
-        self._display_surf.blit(streak_surf, (10, 175))
+        self._display_surf.blit(points_surf, (10, 120))
+        self._display_surf.blit(misses_surf, (10, 145))
+        self._display_surf.blit(hitrate_surf, (10, 170))
+
+        if self._debug:
+            spawn_time_surf = self._font.render("SPAWN_TIME: " + str(round(self._spawn_time, 2)), False, (0, 0, 0))
+            alive_time_surf = self._font.render("ALIVE_TIME: " + str(round(self._alive_time, 2)), False, (0, 0, 0))
+            streak_surf = self._font.render("STREAK: " + str(self._streak), False, (0, 0, 0))
+            self._display_surf.blit(spawn_time_surf, (10, 245))
+            self._display_surf.blit(alive_time_surf, (10, 270))
+            self._display_surf.blit(streak_surf, (10, 305))
 
         pygame.display.flip()
 
@@ -384,12 +385,17 @@ class App():
         if event.type == pygame.MOUSEBUTTONDOWN:
             self.on_mouse_down(event)
 
+        if event.type == pygame.KEYDOWN and event.key == 100:
+            self._debug = not self._debug
+
         if event.type == ZOMBIE_HIDDEN_EVENT:
             self._streak = max(self._streak - 1, 0)
-            self._misses = max(self._misses + 1, 0)
+            #self._misses = max(self._misses + 1, 0)
+
 
         for zombie in self._alive_zombies:
             zombie.on_event(event)
+
 
     def on_mouse_down(self, event):
         has_hit = False
